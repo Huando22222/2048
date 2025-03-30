@@ -18,8 +18,8 @@ class Tile {
   }
 
   void appear({required Animation<double> parent}) {
-    // size = Tween(begin: 0.0, end: 1.0).animate(CurvedAnimation(
-    //     parent: parent, curve: Interval(GameValues.moveInterval, 1.0)));
+    size = Tween(begin: 0.0, end: 1.0).animate(CurvedAnimation(
+        parent: parent, curve: Interval(GameValues.moveInterval, 1.0)));
   }
 
   void moveTo({
@@ -29,9 +29,10 @@ class Tile {
   }) {
     Animation<double> curved = CurvedAnimation(
         parent: parent,
-        curve: Interval(0.0, 1
-            // GameValues.moveInterval,
-            ));
+        curve: Interval(
+          0.0,
+          GameValues.moveInterval,
+        ));
     animatedX = Tween<double>(
       begin: x,
       end: toX,
@@ -45,8 +46,8 @@ class Tile {
   void resetAnimations() {
     animatedX = AlwaysStoppedAnimation(x.toDouble());
     animatedY = AlwaysStoppedAnimation(y.toDouble());
-    size = AlwaysStoppedAnimation(1.0);
     animatedValue = AlwaysStoppedAnimation(value.toDouble());
+    size = AlwaysStoppedAnimation(1.0);
   }
 }
 

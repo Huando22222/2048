@@ -1,4 +1,5 @@
 import 'dart:developer';
+import 'dart:math' show Random;
 
 import 'package:flutter/material.dart';
 import 'package:two048/game_values.dart';
@@ -18,9 +19,13 @@ class GamePlay extends StatefulWidget {
   State<GamePlay> createState() => _GamePlayState();
 }
 
-class _GamePlayState extends State<GamePlay>
-    with SingleTickerProviderStateMixin {
+class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
+  // with SingleTickerProviderStateMixin {
   late AnimationController controller;
+  late AnimationController appearController;
+  late Animation<double> animatedSizeScore;
+  late Animation<double> shakeAnimation;
+  bool ableToSwipe = true;
   int score = 0;
 
   List<List<Tile>> tiles = List.generate(
@@ -33,22 +38,61 @@ class _GamePlayState extends State<GamePlay>
   // List<Tile> toAdd = [];
 
   Iterable<Tile> get flattenedTiles => tiles.expand((element) => element);
-
   @override
   void initState() {
     super.initState();
     controller = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 500),
+      duration: Duration(milliseconds: GameValues.millisecondsAnimation),
+    );
+    appearController = AnimationController(
+      vsync: this,
+      duration: Duration(
+        milliseconds: GameValues.millisecondsAnimation,
+        // milliseconds: (GameValues.millisecondsAnimation / 2).round(),
+      ),
+    );
+    animatedSizeScore = Tween(begin: 1.20, end: 1.0).animate(CurvedAnimation(
+        parent: controller,
+        curve: Interval(
+          GameValues.moveInterval,
+          1,
+          curve: Curves.bounceOut,
+        )));
+    shakeAnimation = TweenSequence([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 5.0), weight: .2),
+      TweenSequenceItem(tween: Tween(begin: 5.0, end: -5.0), weight: .2),
+      TweenSequenceItem(tween: Tween(begin: -5.0, end: 5.0), weight: .2),
+      TweenSequenceItem(tween: Tween(begin: 5.0, end: -5.0), weight: .2),
+      TweenSequenceItem(tween: Tween(begin: -5.0, end: 0.0), weight: .2),
+    ]).animate(
+      CurvedAnimation(
+        parent: controller,
+        curve: Interval(
+          GameValues.moveInterval,
+          1,
+        ),
+      ),
+    );
+    appearController.addStatusListener(
+      (status) {
+        if (status == AnimationStatus.completed) {
+          log("appearController completed");
+          for (var tile in flattenedTiles) {
+            tile.stopAnimatedSize();
+          }
+        }
+      },
     );
     controller.addStatusListener(
       (status) {
-        if (status.isCompleted) {
-          // if (status == AnimationStatus.completed) {
+        if (status == AnimationStatus.completed) {
+          log("controller completed");
+          appearController.forward(from: 0.0);
           for (var tile in flattenedTiles) {
             tile.resetAnimations();
           }
-          score = 0;
+          ableToSwipe = true;
         }
       },
     );
@@ -62,6 +106,7 @@ class _GamePlayState extends State<GamePlay>
         element.resetAnimations();
       }
       addNewTile();
+      score = 0;
       controller.forward(from: 0.0);
     });
   }
@@ -93,22 +138,22 @@ class _GamePlayState extends State<GamePlay>
         ),
       ),
     ));
-
     stackItems.addAll(flattenedTiles.map(
       (e) {
         return AnimatedBuilder(
-          animation: controller,
+          animation: Listenable.merge([controller, appearController]),
+          // animation: controller,
           builder: (context, child) {
-            if (e.value == 0) {
+            if (e.animatedValue.value == 0) {
               return SizedBox.shrink();
             } else {
               return TileWidget(
                 left: e.animatedX.value * tileSize,
                 top: e.animatedY.value * tileSize,
                 tileSize: tileSize,
-                containerSize:
-                    (tileSize - GameValues.tilePadding * 2) * e.size.value,
-                value: e.value,
+                containerSize: (tileSize - GameValues.tilePadding * 2) *
+                    e.animatedSize.value,
+                value: e.animatedValue.value.toInt(),
               );
             }
           },
@@ -136,8 +181,73 @@ class _GamePlayState extends State<GamePlay>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            Container(
-              child: Text(score.toString()),
+            SizedBox(
+              height: size.height * 0.2,
+              width: double.infinity,
+              child: Center(
+                child: AnimatedBuilder(
+                  animation: controller,
+                  builder: (context, child) {
+                    return Transform.translate(
+                      offset: Offset(shakeAnimation.value, 0),
+                      child: Transform.scale(
+                        scale: animatedSizeScore.value,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey,
+                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.amber,
+                                Colors.orange,
+                                Colors.red,
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 4,
+                                offset: Offset(2, 2),
+                              ),
+                            ],
+                          ),
+                          padding: const EdgeInsets.all(2),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.grey,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 40, vertical: 15),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(width: 12),
+                                Text(
+                                  "Score: $score",
+                                  style: GameValues.getScoreTextStyle(
+                                          score.toInt())
+                                      .copyWith(
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.black.withAlpha(100),
+                                        offset: Offset(2, 2),
+                                        blurRadius: 4,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
             ),
             Center(
               child: Container(
@@ -149,6 +259,7 @@ class _GamePlayState extends State<GamePlay>
                   borderRadius: BorderRadius.circular(GameValues.borderRadius),
                 ),
                 child: Stack(
+                  clipBehavior: Clip.none,
                   children: [
                     ...stackItems,
                   ],
@@ -174,7 +285,7 @@ class _GamePlayState extends State<GamePlay>
                   onPressed: () {
                     merge(direction: SwipeDirection.left);
                   },
-                  child: Text("right"),
+                  child: Text("left"),
                 ),
                 ElevatedButton(
                   onPressed: () {
@@ -190,41 +301,6 @@ class _GamePlayState extends State<GamePlay>
               },
               child: Text("down"),
             ),
-            ElevatedButton(
-              onPressed: () {
-                addNewTile();
-              },
-              child: Text("new tile"),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                ElevatedButton(
-                  onPressed: () {
-                    // setState(() {});
-                    controller.forward(from: 0.0);
-                  },
-                  child: Text("forward"),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    for (var element in tiles) {
-                      String tmp = element.map((tile) {
-                        return "[${tile.x.toInt()},${tile.y.toInt()}]${tile.value}";
-                      }).join(', ');
-                      log(tmp);
-                    }
-                  },
-                  child: Text("tiles value"),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    log("[${tiles[3][1].x.toInt().toString()},${tiles[3][1].y.toInt().toString()}] ${tiles[3][1].value.toString()}");
-                  },
-                  child: Text("tile value"),
-                ),
-              ],
-            ),
           ],
         ),
       ),
@@ -232,15 +308,6 @@ class _GamePlayState extends State<GamePlay>
   }
 
   void addNewTile() {
-    // for (var element in flattenedTiles) {
-    //   score += element.value;
-    // }
-    for (var element in tiles) {
-      String tmp = element.map((tile) {
-        return "[${tile.x.toInt()},${tile.y.toInt()}]${tile.value}";
-      }).join(', ');
-      log(tmp);
-    }
     List<Tile> emptyTiles = flattenedTiles.where(
       (element) {
         return element.value == 0;
@@ -251,15 +318,17 @@ class _GamePlayState extends State<GamePlay>
 
     emptyTiles.shuffle();
     int canAddMore = emptyTiles.length >= 2 ? 2 : 1;
-    log("addNewTile================================$canAddMore");
+    List<int> newValueTile = score > 50 ? [2, 4] : [2];
+    // log("addNewTile================================$canAddMore");
     for (int i = 0; i < canAddMore; i++) {
-      // tiles[emptyTiles[i].x.toInt()][emptyTiles[i].y.toInt()].value = 2;
-      // tiles[emptyTiles[i].x.toInt()][emptyTiles[i].y.toInt()]
-      //     .appear(parent: controller);
-      tiles[emptyTiles[i].y.toInt()][emptyTiles[i].x.toInt()].value = 2;
+      int newValue = newValueTile[Random().nextInt(newValueTile.length)];
+      tiles[emptyTiles[i].y.toInt()][emptyTiles[i].x.toInt()].value = newValue;
       tiles[emptyTiles[i].y.toInt()][emptyTiles[i].x.toInt()]
-          .appear(parent: controller);
-      log('new tile position [${emptyTiles[i].x.toInt()},${emptyTiles[i].y.toInt()}]');
+          .appear(parent: appearController);
+
+      score += newValue;
+      // .appear(parent: controller);
+      // log('new tile position [${emptyTiles[i].x.toInt()},${emptyTiles[i].y.toInt()}]');
     }
   }
 
@@ -279,11 +348,11 @@ class _GamePlayState extends State<GamePlay>
         didMerge = mergeRight();
         break;
     }
-
     if (didMerge) {
       setState(() {
         addNewTile();
         controller.forward(from: 0.0);
+        ableToSwipe = false;
       });
     }
   }
@@ -299,9 +368,11 @@ class _GamePlayState extends State<GamePlay>
       cols.map((e) => mergeTiles(e.reversed.toList())).toList().any((e) => e);
 
   bool mergeTiles(List<Tile> tiles) {
-    String tmp = tiles.map((tile) => tile.value).join(', ');
-    log("each Row, col: $tmp");
+    // String tmp = tiles.map((tile) => tile.value).join(', ');
+    // log("each Row, col: $tmp");
     bool didChange = false;
+    if (!ableToSwipe) return didChange;
+
     for (int i = 0; i < tiles.length; i++) {
       for (int j = i; j < tiles.length; j++) {
         if (tiles[j].value == 0) continue;
@@ -321,11 +392,7 @@ class _GamePlayState extends State<GamePlay>
         if (i != j || mergeTile != null) {
           didChange = true;
           int resultValue = tiles[j].value;
-          tiles[j].moveTo(
-            parent: controller,
-            toX: tiles[i].x,
-            toY: tiles[i].y,
-          );
+          tiles[j].moveTo(parent: controller, toX: tiles[i].x, toY: tiles[i].y);
           if (mergeTile != null) {
             resultValue += mergeTile.value;
             mergeTile.moveTo(
@@ -333,19 +400,19 @@ class _GamePlayState extends State<GamePlay>
               toX: tiles[i].x,
               toY: tiles[i].y,
             );
-            // log("[${mergeTile.x.toInt()},${mergeTile.y.toInt()}]${mergeTile.value}");
+
             // mergeTile.bounce(controller);
-            // mergeTile.changeNumber(controller, resultValue);
+            mergeTile.changeNumber(controller, resultValue.toDouble());
             mergeTile.value = 0;
-            // tiles[j].changeNumber(controller, 0);
+            tiles[j].changeNumber(controller, 0);
           }
           tiles[j].value = 0;
           tiles[i].value = resultValue;
-          String tmp2 = tiles
-              .map((tile) =>
-                  "[${tile.x.toInt()},${tile.y.toInt()}]${tile.value}")
-              .join(', ');
-          log("- $tmp2\n");
+          // String tmp2 = tiles
+          //     .map((tile) =>
+          //         "[${tile.x.toInt()},${tile.y.toInt()}]${tile.value}")
+          //     .join(', ');
+          // log("- $tmp2\n");
         }
         break;
       }

@@ -6,6 +6,7 @@ class GameValues {
   static const double tilePadding = 4.0;
   static const double tileRadius = 5.0;
   static const double moveInterval = .5;
+  static const int millisecondsAnimation = 200;
 
   static const Map<int, Color> tileColors = {
     2: Color(0xFFEEE4DA),
@@ -62,6 +63,31 @@ class GameValues {
     1024: FontWeight.w900,
     2048: FontWeight.w900,
   };
+  static const Map<int, Color> scoreTextColors = {
+    100: Colors.white70,
+    500: Colors.yellow,
+    1000: Colors.orange,
+    3000: Colors.red,
+    5000: Colors.purple,
+    10000: Colors.blue,
+  };
+  static Color getScoreTextColor(int score) {
+    if (score >= 10000) return scoreTextColors[10000]!;
+    if (score >= 5000) return scoreTextColors[5000]!;
+    if (score >= 3000) return scoreTextColors[3000]!;
+    if (score >= 1000) return scoreTextColors[1000]!;
+    if (score >= 500) return scoreTextColors[500]!;
+    if (score >= 100) return scoreTextColors[100]!;
+    return Colors.white;
+  }
+
+  static TextStyle getScoreTextStyle(int score) {
+    return TextStyle(
+      color: getScoreTextColor(score),
+      fontSize: 24.0,
+      fontWeight: FontWeight.bold,
+    );
+  }
 
   static const Color tileBorderColor = Color(0xFF776E65);
   static const Color emptyTileColor = Color(0xFFCDC1B4);

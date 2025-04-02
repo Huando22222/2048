@@ -2,6 +2,7 @@ import 'dart:developer';
 import 'dart:math' show Random;
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:two048/game_values.dart';
 import 'package:two048/tile.dart';
 
@@ -23,28 +24,33 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
   // with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late AnimationController _appearController;
+  late AnimationController _gradientController;
+  late AnimationController _offsetController;
+  late AnimationController _popupController;
   late Animation<double> _animatedSizeScore;
   late Animation<double> _shakeAnimation;
-  late AnimationController _gradientController;
+  late Animation<Offset> _offsetAnimation;
   late Animation<Color?> _color1;
   late Animation<Color?> _color2;
   late Animation<Color?> _color3;
   bool _ableToSwipe = true;
+  bool _isFinish = false;
   int _score = 0;
+  int _bestScore = 0;
 
   final List<List<Tile>> _tiles = List.generate(
       4,
       (y) => List.generate(
           4, (x) => Tile(x: x.toDouble(), y: y.toDouble(), value: 0)));
 
-  Iterable<List<Tile>> get cols => // 1
+  Iterable<List<Tile>> get _cols => // 1
       List.generate(4, (x) => List.generate(4, (y) => _tiles[y][x]));
-  // List<Tile> toAdd = [];
 
-  Iterable<Tile> get flattenedTiles => _tiles.expand((element) => element);
+  Iterable<Tile> get _flattenedTiles => _tiles.expand((element) => element);
   @override
   void initState() {
     super.initState();
+    // getBestScore();
     _controller = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: GameValues.millisecondsAnimation),
@@ -53,9 +59,19 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
       vsync: this,
       duration: Duration(
         milliseconds: GameValues.millisecondsAnimation,
-        // milliseconds: (GameValues.millisecondsAnimation / 2).round(),
       ),
     );
+    _offsetController = AnimationController(
+      vsync: this,
+      duration: Duration(
+        milliseconds: GameValues.millisecondsAnimation,
+      ),
+    );
+    _offsetAnimation =
+        Tween(begin: Offset(0, -3), end: Offset(0, 0)).animate(CurvedAnimation(
+      parent: _offsetController,
+      curve: Curves.bounceOut,
+    ));
     _animatedSizeScore = Tween(begin: 1.20, end: 1.0).animate(CurvedAnimation(
         parent: _controller,
         curve: Interval(
@@ -81,9 +97,12 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
     _appearController.addStatusListener(
       (status) {
         if (status == AnimationStatus.completed) {
-          log("appearController completed");
-          for (var tile in flattenedTiles) {
+          for (var tile in _flattenedTiles) {
             tile.stopAnimatedSize();
+          }
+
+          if (_isFinish) {
+            _offsetController.forward();
           }
         }
       },
@@ -91,9 +110,8 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
     _controller.addStatusListener(
       (status) {
         if (status == AnimationStatus.completed) {
-          log("controller completed");
           _appearController.forward(from: 0.0);
-          for (var tile in flattenedTiles) {
+          for (var tile in _flattenedTiles) {
             tile.resetAnimations();
           }
           _ableToSwipe = true;
@@ -122,12 +140,14 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
     newGame();
   }
 
-  void newGame() {
+  newGame() async {
+    await getBestScore();
     setState(() {
-      for (var element in flattenedTiles) {
+      for (var element in _flattenedTiles) {
         element.value = 0;
         element.resetAnimations();
       }
+      _isFinish = false;
       addNewTile();
       _score = 0;
       _controller.forward(from: 0.0);
@@ -140,6 +160,7 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
     _appearController.dispose();
     _controller.dispose();
     _gradientController.dispose();
+    _popupController.dispose();
   }
 
   @override
@@ -148,10 +169,10 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
     final padding = 16.0;
     //
     final gridSize = size.width - padding * 2;
-    final tileSize = (gridSize - GameValues.tilePadding * 2) / 4;
+    final tileSize = (gridSize - GameValues.gridPadding * 2) / 4;
 
     final List<Widget> stackItems = [];
-    stackItems.addAll(flattenedTiles.map(
+    stackItems.addAll(_flattenedTiles.map(
       (e) => Positioned(
         top: e.y.toDouble() * tileSize,
         left: e.x.toDouble() * tileSize,
@@ -159,8 +180,8 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
         height: tileSize,
         child: Center(
           child: Container(
-            height: tileSize - GameValues.tilePadding * 2,
-            width: tileSize - GameValues.tilePadding * 2,
+            height: tileSize - GameValues.gridPadding * 2,
+            width: tileSize - GameValues.gridPadding * 2,
             decoration: BoxDecoration(
               color: GameValues.emptyTileColor,
               borderRadius: BorderRadius.circular(GameValues.tileRadius),
@@ -169,7 +190,7 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
         ),
       ),
     ));
-    stackItems.addAll(flattenedTiles.map(
+    stackItems.addAll(_flattenedTiles.map(
       (e) {
         return AnimatedBuilder(
           animation: Listenable.merge([_controller, _appearController]),
@@ -182,7 +203,7 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
                 left: e.animatedX.value * tileSize,
                 top: e.animatedY.value * tileSize,
                 tileSize: tileSize,
-                containerSize: (tileSize - GameValues.tilePadding * 2) *
+                containerSize: (tileSize - GameValues.gridPadding * 2) *
                     e.animatedSize.value,
                 value: e.animatedValue.value.toInt(),
               );
@@ -194,134 +215,241 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
 
     return Scaffold(
       backgroundColor: GameValues.boardBackgroundColor,
-      body: GestureDetector(
-        onVerticalDragEnd: (details) {
-          if (details.velocity.pixelsPerSecond.dy > 20) {
-            merge(direction: SwipeDirection.down);
-          } else if (details.velocity.pixelsPerSecond.dy < -20) {
-            merge(direction: SwipeDirection.up);
-          }
-        },
-        onHorizontalDragEnd: (details) {
-          if (details.velocity.pixelsPerSecond.dx > 20) {
-            merge(direction: SwipeDirection.right);
-          } else if (details.velocity.pixelsPerSecond.dx < -20) {
-            merge(direction: SwipeDirection.left);
-          }
-        },
-        child: SizedBox(
-          height: size.height,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                height: MediaQuery.of(context).padding.top + 10,
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                crossAxisAlignment: CrossAxisAlignment.end,
+      body: Stack(
+        children: [
+          GestureDetector(
+            onVerticalDragEnd: (details) {
+              if (details.velocity.pixelsPerSecond.dy > 20) {
+                merge(direction: SwipeDirection.down);
+              } else if (details.velocity.pixelsPerSecond.dy < -20) {
+                merge(direction: SwipeDirection.up);
+              }
+            },
+            onHorizontalDragEnd: (details) {
+              if (details.velocity.pixelsPerSecond.dx > 20) {
+                merge(direction: SwipeDirection.right);
+              } else if (details.velocity.pixelsPerSecond.dx < -20) {
+                merge(direction: SwipeDirection.left);
+              }
+            },
+            child: SizedBox(
+              height: size.height,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Center(
-                    child: AnimatedBuilder(
-                      animation: Listenable.merge(
-                          [_gradientController, _shakeAnimation]),
-                      builder: (context, child) {
-                        return Transform.translate(
-                          offset: Offset(_shakeAnimation.value, 0),
-                          child: Transform.scale(
-                            scale: _animatedSizeScore.value,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.grey,
-                                borderRadius: BorderRadius.circular(12),
-                                gradient: LinearGradient(
-                                  colors: [
-                                    _color1.value ?? Colors.amber,
-                                    _color2.value ?? Colors.orange,
-                                    _color3.value ?? Colors.red,
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
-                                    blurRadius: 4,
-                                    offset: Offset(2, 2),
-                                  ),
-                                ],
-                              ),
-                              padding: const EdgeInsets.all(2),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.grey,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 40, vertical: 15),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    SizedBox(width: 12),
-                                    Text(
-                                      "Score: $_score",
-                                      style: GameValues.getScoreTextStyle(
-                                              _score.toInt())
-                                          .copyWith(
-                                        shadows: [
-                                          Shadow(
-                                            color: Colors.black.withAlpha(100),
-                                            offset: Offset(2, 2),
-                                            blurRadius: 4,
+                  SizedBox(
+                    height: MediaQuery.of(context).padding.top + 10,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 15,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "2048",
+                          style: TextStyle(
+                            fontSize: 40,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF776E65),
+                          ),
+                        ),
+                        Spacer(),
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisSize: MainAxisSize.min,
+                          spacing: 10,
+                          children: [
+                            Row(
+                              spacing: 10,
+                              children: [
+                                AnimatedBuilder(
+                                  animation: Listenable.merge(
+                                      [_gradientController, _shakeAnimation]),
+                                  builder: (context, child) {
+                                    return Transform.translate(
+                                      offset: Offset(_shakeAnimation.value, 0),
+                                      child: Transform.scale(
+                                        scale: _animatedSizeScore.value,
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey,
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                _color1.value ?? Colors.amber,
+                                                _color2.value ?? Colors.orange,
+                                                _color3.value ?? Colors.red,
+                                              ],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color:
+                                                    Colors.black.withAlpha(50),
+                                                blurRadius: 4,
+                                                offset: Offset(2, 2),
+                                              ),
+                                            ],
                                           ),
-                                        ],
+                                          padding: const EdgeInsets.all(2),
+                                          child: _buildScore(
+                                              content: "Score",
+                                              score: "$_score"),
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    );
+                                  },
                                 ),
+                                _buildScore(
+                                    content: "Best", score: "$_bestScore"),
+                              ],
+                            ),
+                            Row(
+                              spacing: 10,
+                              mainAxisSize: MainAxisSize.max,
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                GestureDetector(
+                                  onTap: () {
+                                    newGame();
+                                  },
+                                  child: Container(
+                                    padding: EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                        color: Color(0xffeccd71),
+                                        borderRadius:
+                                            BorderRadius.circular(12)),
+                                    child: Icon(Icons.replay_sharp),
+                                  ),
+                                ),
+                              ],
+                            )
+                          ],
+                        )
+                      ],
+                    ),
+                  ),
+                  Spacer(
+                    flex: 1,
+                  ),
+                  Container(
+                    height: gridSize,
+                    width: gridSize,
+                    padding: EdgeInsets.all(GameValues.gridPadding),
+                    decoration: BoxDecoration(
+                      color: GameValues.tileBorderColor,
+                      borderRadius:
+                          BorderRadius.circular(GameValues.borderRadius),
+                    ),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        ...stackItems,
+                      ],
+                    ),
+                  ),
+                  Spacer(
+                    flex: 4,
+                  ),
+                  // ElevatedButton(
+                  //     onPressed: () {
+                  //       _isFinish = true;
+                  //       _offsetController.forward();
+                  //       setState(() {});
+                  //     },
+                  //     child: Text("end model")),
+                ],
+              ),
+            ),
+          ),
+          if (_isFinish) ...[
+            Positioned.fill(
+              child: Container(
+                color: Colors.white.withAlpha(70),
+              ),
+            ),
+            Positioned.fill(
+              child: Center(
+                child: SlideTransition(
+                  position: _offsetAnimation,
+                  child: Container(
+                    height: 300,
+                    decoration: BoxDecoration(),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          "Game Over!",
+                          style: TextStyle(
+                            fontSize: 40,
+                            color: Color(0xFF776E65),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        RichText(
+                          text: TextSpan(
+                            text: "You scored a score ",
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Color(0xFF776E65),
+                              fontWeight: FontWeight.bold,
+                            ),
+                            children: [
+                              TextSpan(
+                                text: _score.toString(),
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  color: Color(0xFFf59839),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              TextSpan(text: " points"),
+                            ],
+                          ),
+                        ),
+                        SizedBox(
+                          height: 10,
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            newGame();
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(),
+                            child: Text(
+                              'Try again',
+                              style: TextStyle(
+                                fontSize: 20,
+                                color: Color(0xFF776E65),
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
-                        );
-                      },
+                        )
+                      ],
                     ),
                   ),
-                  Text("Best\n1000"),
-                ],
-              ),
-              Spacer(),
-              Container(
-                height: gridSize,
-                width: gridSize,
-                padding: EdgeInsets.all(GameValues.tilePadding),
-                decoration: BoxDecoration(
-                  color: GameValues.tileBorderColor,
-                  borderRadius: BorderRadius.circular(GameValues.borderRadius),
-                ),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    ...stackItems,
-                  ],
                 ),
               ),
-              Spacer(),
-              Spacer(),
-            ],
-          ),
-        ),
+            ),
+          ],
+        ],
       ),
     );
   }
 
   void addNewTile() {
-    List<Tile> emptyTiles = flattenedTiles.where(
+    List<Tile> emptyTiles = _flattenedTiles.where(
       (element) {
         return element.value == 0;
       },
     ).toList();
-
-    if (emptyTiles.isEmpty) return;
 
     emptyTiles.shuffle();
     int canAddMore = emptyTiles.length >= 2 ? 2 : 1;
@@ -336,6 +464,20 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
       _score += newValue;
       // .appear(parent: controller);
       // log('new tile position [${emptyTiles[i].x.toInt()},${emptyTiles[i].y.toInt()}]');
+    }
+
+    // check game finished
+    if (emptyTiles.length <= 2) {
+      bool blockRows = _tiles.every((row) => checkGameOver(row));
+      bool blockCols = _cols.every((row) => checkGameOver(row));
+
+      if (blockRows && blockCols) {
+        if (_score > _bestScore) {
+          setBestScore(bestScore: _score);
+        }
+        _isFinish = true;
+      }
+      return;
     }
   }
 
@@ -369,10 +511,10 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
   bool mergeRight() =>
       _tiles.map((e) => mergeTiles(e.reversed.toList())).toList().any((e) => e);
 
-  bool mergeUp() => cols.map((e) => mergeTiles(e)).toList().any((e) => e);
+  bool mergeUp() => _cols.map((e) => mergeTiles(e)).toList().any((e) => e);
 
   bool mergeDown() =>
-      cols.map((e) => mergeTiles(e.reversed.toList())).toList().any((e) => e);
+      _cols.map((e) => mergeTiles(e.reversed.toList())).toList().any((e) => e);
 
   bool mergeTiles(List<Tile> tiles) {
     // String tmp = tiles.map((tile) => tile.value).join(', ');
@@ -409,7 +551,7 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
               toY: tiles[i].y,
             );
 
-            // mergeTile.bounce(controller);
+            mergeTile.bounce(_controller);
             mergeTile.changeNumber(_controller, resultValue.toDouble());
             mergeTile.value = 0;
             tiles[j].changeNumber(_controller, 0);
@@ -426,5 +568,65 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
       }
     }
     return didChange;
+  }
+
+  bool checkGameOver(List<Tile> tiles) {
+    for (int i = 0; i < tiles.length - 1; i++) {
+      if (tiles[i].value == tiles[i + 1].value) return false;
+    }
+    return true;
+  }
+
+  Future<void> getBestScore() async {
+    final SharedPreferences pref = await SharedPreferences.getInstance();
+    final result = pref.getInt("best_score");
+    if (result == null) {
+      setBestScore(bestScore: 0);
+      _bestScore = 0;
+    } else {
+      _bestScore = result;
+    }
+  }
+
+  void setBestScore({required int bestScore}) async {
+    final SharedPreferences pref = await SharedPreferences.getInstance();
+    pref.setInt("best_score", bestScore);
+  }
+
+  Widget _buildScore({
+    required String content,
+    required String score,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      padding: EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: 5,
+      ),
+      child: RichText(
+        textAlign: TextAlign.center,
+        text: TextSpan(
+          text: "$content\n",
+          style: TextStyle(),
+          children: [
+            TextSpan(
+              text: score,
+              style: GameValues.getScoreTextStyle(_score.toInt()).copyWith(
+                shadows: [
+                  Shadow(
+                    color: Colors.black.withAlpha(100),
+                    offset: Offset(2, 2),
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

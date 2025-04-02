@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class GameValues {
   static const double borderRadius = 10.0;
   // static const double borderWidth = 2.0;
-  static const double tilePadding = 4.0;
+  static const double gridPadding = 4.0;
   static const double tileRadius = 5.0;
   static const double moveInterval = .5;
   static const int millisecondsAnimation = 200;
@@ -84,7 +84,7 @@ class GameValues {
   static TextStyle getScoreTextStyle(int score) {
     return TextStyle(
       color: getScoreTextColor(score),
-      fontSize: 24.0,
+      fontSize: 16.0,
       fontWeight: FontWeight.bold,
     );
   }

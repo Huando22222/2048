@@ -46,7 +46,7 @@ class Tile {
           GameValues.moveInterval,
         ));
 
-    log('moveTo [${toX.toInt()},${toY.toInt()}] <- [${x.toInt()},${y.toInt()}] current: [${animatedX.value.toInt()},${animatedY.value.toInt()}] value: $value');
+    // log('moveTo [${toX.toInt()},${toY.toInt()}] <- [${x.toInt()},${y.toInt()}] current: [${animatedX.value.toInt()},${animatedY.value.toInt()}] value: $value');
     animatedX = Tween<double>(
       begin: x,
       end: toX,

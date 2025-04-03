@@ -218,6 +218,7 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
       body: Stack(
         children: [
           GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onVerticalDragEnd: (details) {
               if (details.velocity.pixelsPerSecond.dy > 250) {
                 merge(direction: SwipeDirection.down);
@@ -235,6 +236,7 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
             child: SizedBox(
               height: size.height,
               child: Column(
+                mainAxisSize: MainAxisSize.max,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   SizedBox(

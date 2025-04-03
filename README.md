@@ -1,16 +1,40 @@
-# two048
+# 2048 game
 
-A new Flutter project.
+A modern implementation of the classic 2048 puzzle game built with Flutter. This project enhances the traditional gameplay with smooth animations, an optimized algorithm, and persistent storage using `shared_preferences`.
 
-## Getting Started
+## Features
 
-This project is a starting point for a Flutter application.
+-   **Smooth Animations**: Tiles slide and merge with visually appealing transitions.
+-   **Optimized Algorithm**: Efficient logic for tile movement, merging, and game state management.
+-   **Persistent Storage**: Save and load your high score and game state using `shared_preferences`.
+-   **Responsive Design**: Works seamlessly on both Android and iOS devices.
+-   **Customizable Styling**: Tile colors, text colors, font sizes, and weights adapt dynamically based on tile values
 
-A few resources to get you started if this is your first Flutter project:
+-   [Refer to the algorithm & animation](https://www.youtube.com/watch?v=QEqLobOif3Y)
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+<div style="display: flex; justify-content: space-between;">
+    <img src="assets/demo/demo_gif.gif" alt="demo app" width="32%" />
+    <img src="assets/demo/Screenshot_1743657467.png" alt="demo app" width="32%" />
+    <img src="assets/demo/Screenshot_1743656448.png" alt="demo app" width="32%" />
+</div>
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Installation
+
+1. **Prerequisites**:
+
+    - Flutter SDK installed (version 3.0.0 or higher recommended).
+    - A code editor (e.g., VS Code, Android Studio).
+    - An emulator or physical device for testing.
+
+2. **Clone the Repository**:
+
+    ```bash
+    git clone https://github.com/Huando22222/2048.git
+    cd 2048-flutter-game
+    ```
+
+3. **Install Dependencies and run the app**:
+    ```bash
+    flutter pub get
+    flutter run
+    ```

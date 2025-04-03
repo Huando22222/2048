@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'dart:math' show Random;
 
 import 'package:flutter/material.dart';
@@ -37,7 +36,7 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
   bool _isFinish = false;
   int _score = 0;
   int _bestScore = 0;
-
+  int _moved = 0;
   final List<List<Tile>> _tiles = List.generate(
       4,
       (y) => List.generate(
@@ -150,6 +149,7 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
       _isFinish = false;
       addNewTile();
       _score = 0;
+      _moved = 0;
       _controller.forward(from: 0.0);
     });
   }
@@ -219,16 +219,16 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
         children: [
           GestureDetector(
             onVerticalDragEnd: (details) {
-              if (details.velocity.pixelsPerSecond.dy > 20) {
+              if (details.velocity.pixelsPerSecond.dy > 250) {
                 merge(direction: SwipeDirection.down);
-              } else if (details.velocity.pixelsPerSecond.dy < -20) {
+              } else if (details.velocity.pixelsPerSecond.dy < -250) {
                 merge(direction: SwipeDirection.up);
               }
             },
             onHorizontalDragEnd: (details) {
-              if (details.velocity.pixelsPerSecond.dx > 20) {
+              if (details.velocity.pixelsPerSecond.dx > 1000) {
                 merge(direction: SwipeDirection.right);
-              } else if (details.velocity.pixelsPerSecond.dx < -20) {
+              } else if (details.velocity.pixelsPerSecond.dx < -1000) {
                 merge(direction: SwipeDirection.left);
               }
             },
@@ -325,7 +325,10 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
                                         color: Color(0xffeccd71),
                                         borderRadius:
                                             BorderRadius.circular(12)),
-                                    child: Icon(Icons.replay_sharp),
+                                    child: Icon(
+                                      Icons.replay_sharp,
+                                      color: Color(0xffF9F6F2),
+                                    ),
                                   ),
                                 ),
                               ],
@@ -357,13 +360,6 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
                   Spacer(
                     flex: 4,
                   ),
-                  // ElevatedButton(
-                  //     onPressed: () {
-                  //       _isFinish = true;
-                  //       _offsetController.forward();
-                  //       setState(() {});
-                  //     },
-                  //     child: Text("end model")),
                 ],
               ),
             ),
@@ -371,7 +367,7 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
           if (_isFinish) ...[
             Positioned.fill(
               child: Container(
-                color: Colors.white.withAlpha(70),
+                color: Colors.white.withAlpha(150),
               ),
             ),
             Positioned.fill(
@@ -387,16 +383,17 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
                         Text(
                           "Game Over!",
                           style: TextStyle(
-                            fontSize: 40,
+                            fontSize: 50,
                             color: Color(0xFF776E65),
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         RichText(
+                          textAlign: TextAlign.center,
                           text: TextSpan(
-                            text: "You scored a score ",
+                            text: "You earned ",
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: 20,
                               color: Color(0xFF776E65),
                               fontWeight: FontWeight.bold,
                             ),
@@ -404,17 +401,19 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
                               TextSpan(
                                 text: _score.toString(),
                                 style: TextStyle(
-                                  fontSize: 20,
+                                  fontSize: 30,
                                   color: Color(0xFFf59839),
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              TextSpan(text: " points"),
+                              TextSpan(text: " points\nwith "),
+                              TextSpan(text: _moved.toString()),
+                              TextSpan(text: " moves "),
                             ],
                           ),
                         ),
                         SizedBox(
-                          height: 10,
+                          height: 50,
                         ),
                         GestureDetector(
                           onTap: () {
@@ -425,7 +424,7 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
                             child: Text(
                               'Try again',
                               style: TextStyle(
-                                fontSize: 20,
+                                fontSize: 30,
                                 color: Color(0xFF776E65),
                                 fontWeight: FontWeight.bold,
                               ),
@@ -453,15 +452,19 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
 
     emptyTiles.shuffle();
     int canAddMore = emptyTiles.length >= 2 ? 2 : 1;
-    List<int> newValueTile = _score > 50 ? [2, 4] : [2];
-    // log("addNewTile================================$canAddMore");
+    // List<int> newValueTile = _score > 50 ? [2, 4] : [2];
+    List<int> newValueTile = [2, 4, 8];
+    int canRandom = _score < 50
+        ? 1
+        : _score < 3000
+            ? 2
+            : 3;
     for (int i = 0; i < canAddMore; i++) {
-      int newValue = newValueTile[Random().nextInt(newValueTile.length)];
+      int newValue = newValueTile[Random().nextInt(canRandom)];
       _tiles[emptyTiles[i].y.toInt()][emptyTiles[i].x.toInt()].value = newValue;
       _tiles[emptyTiles[i].y.toInt()][emptyTiles[i].x.toInt()]
           .appear(parent: _appearController);
-
-      _score += newValue;
+      // _score += newValue;
       // .appear(parent: controller);
       // log('new tile position [${emptyTiles[i].x.toInt()},${emptyTiles[i].y.toInt()}]');
     }
@@ -498,6 +501,7 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
         break;
     }
     if (didMerge) {
+      _moved++;
       setState(() {
         addNewTile();
         _controller.forward(from: 0.0);
@@ -555,6 +559,7 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
             mergeTile.changeNumber(_controller, resultValue.toDouble());
             mergeTile.value = 0;
             tiles[j].changeNumber(_controller, 0);
+            _score += resultValue;
           }
           tiles[j].value = 0;
           tiles[i].value = resultValue;
@@ -599,7 +604,7 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.grey,
+        color: Color(0xffa49381),
         borderRadius: BorderRadius.circular(10),
       ),
       padding: EdgeInsets.symmetric(
@@ -610,7 +615,10 @@ class _GamePlayState extends State<GamePlay> with TickerProviderStateMixin {
         textAlign: TextAlign.center,
         text: TextSpan(
           text: "$content\n",
-          style: TextStyle(),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xffeee4da),
+          ),
           children: [
             TextSpan(
               text: score,

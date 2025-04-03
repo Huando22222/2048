@@ -20,6 +20,8 @@ class GameValues {
     512: Color(0xFFEDC850),
     1024: Color(0xFFEDC53F),
     2048: Color(0xFFEDC22E),
+    4096: Color(0xFFEDC00C),
+    8192: Color(0xFFEDBC00),
   };
 
   static const Map<int, Color> textColors = {
@@ -34,6 +36,8 @@ class GameValues {
     512: Color(0xFFF9F6F2),
     1024: Color(0xFFF9F6F2),
     2048: Color(0xFFF9F6F2),
+    4096: Color(0xFFF9F6F2),
+    8192: Color(0xFFF9F6F2),
   };
 
   static const Map<int, double> fontSizes = {
@@ -48,6 +52,8 @@ class GameValues {
     512: 24.0,
     1024: 20.0,
     2048: 20.0,
+    4096: 18.0,
+    8192: 18.0,
   };
 
   static const Map<int, FontWeight> fontWeights = {
@@ -62,6 +68,8 @@ class GameValues {
     512: FontWeight.w800,
     1024: FontWeight.w900,
     2048: FontWeight.w900,
+    4096: FontWeight.w900,
+    8192: FontWeight.w900,
   };
   static const Map<int, Color> scoreTextColors = {
     100: Colors.white70,
@@ -89,10 +97,10 @@ class GameValues {
     );
   }
 
-  static const Color tileBorderColor = Color(0xFF776E65);
+  static const Color tileBorderColor = Color(0xFFbbada0);
   static const Color emptyTileColor = Color(0xFFCDC1B4);
 
-  static const Color boardBackgroundColor = Color(0xFFBBADA0);
+  static const Color boardBackgroundColor = Color(0xFFfbf7ef);
 
   static Color getTileColor(int value) {
     return tileColors[value] ?? emptyTileColor;

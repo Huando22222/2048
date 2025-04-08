@@ -30,7 +30,7 @@ A modern implementation of the classic 2048 puzzle game built with Flutter. This
 
     ```bash
     git clone https://github.com/Huando22222/2048.git
-    cd 2048-flutter-game
+    cd 2048
     ```
 
 3. **Install Dependencies and run the app**:
